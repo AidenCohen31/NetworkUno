@@ -2,6 +2,8 @@ import argparse
 import socket
 import struct
 import csv
+from datetime import datetime
+from datetime import timedelta
 from collections import defaultdict
 
 MAX_BYTES = 6000
@@ -14,13 +16,47 @@ def sendRequest(hostName,port, filename):
     sock = socket.socket(socket.AF_INET,  socket.SOCK_DGRAM)
     sock.sendto(makeRequestPacket(filename), (hostName, port))
 
-def receivePacket(sock):
-    data, addr = sock.recvfrom(MAX_BYTES)
-    header = struct.unpack_from("!cII",data)
-    length = header[2]
-    payload = struct.unpack_from(f"!{length}s",data,offset=9)[0].decode('utf-8')
-    print("Data recieved : "+payload)
-    return payload
+def receivePackets(sock):
+    end = False
+    text = ""
+    totalPackets = 0
+    totalLength = 0
+    while not end:
+        data, addr = sock.recvfrom(MAX_BYTES)
+        totalPackets+=1
+        startTime = datetime.utcnow()
+        header = struct.unpack_from("!cII",data)
+        length = header[2]
+        totalLength+=length
+        if header[0]==b'E':
+            end = True
+            endTime = datetime.utcnow()
+            print("END Packet")
+            print("recv time: ",endTime)
+            print("sender addr: ",addr)
+            print("Sequence num: ",header[1])
+            print("length: ",0)
+            print("payload: ")
+            print("")
+
+            milliseconds = (endTime-startTime)/timedelta(milliseconds=1)
+            print("Summary")
+            print("sender addr: ",addr)
+            print("Total Data packets: ", totalPackets)
+            print("Total Data bytes: ", totalLength)
+            print("Average packets/second: ", totalPackets*1000/milliseconds)
+            print("Duration: ", milliseconds, " ms")
+        else:
+            payload = struct.unpack_from(f"!{length}s",data,offset=9)[0].decode('utf-8')
+            text+=payload
+            print("DATA Packet")
+            print("recv time: ",datetime.utcnow())
+            print("sender addr: ",addr)
+            print("Sequence num: ",header[1])
+            print("length: ",length)
+            print("payload: ",payload[0:min(len(payload),4)])
+            print("")
+    return text
 
 
 def parseTracker():
@@ -49,6 +85,7 @@ if __name__ == "__main__":
         id = i[0]
         #hostname, port, filename
         sendRequest(i[1],i[2],args.fileoption)
-        text = receivePacket(sock)
+        text = receivePackets(sock)
+        print("<------FULL TEXT------>")
         print(text)
 

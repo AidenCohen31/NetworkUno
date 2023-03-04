@@ -5,17 +5,6 @@ from datetime import datetime
 import os
 
 MAX_BYTES = 6000
-class DataPacket:
-    def __init__(self, s, raddr, rport, length, payload):
-        self.s = s 
-        self.raddr = raddr 
-        self.length = length 
-        self.payload = payload 
-        self.time = datetime.now()
-    def __repr__(self):
-        return f"DATA Packet\nsend time:\t{self.time}\nrequester addr:\t{self.raddr}:{self.rport}\nSequence num:\t{self.s}\nlength:\t{self.length}\npayload:{self.payload}"
-
-
 
 def receiveRequest(serversocket):
     data, addr = serversocket.recvfrom(MAX_BYTES)
@@ -38,9 +27,17 @@ def readFile(filename, b):
 def makeDataPacket(bytes, sequence_num):
     return struct.pack(f"!cII{len(bytes)}s",b'D',sequence_num,len(bytes),bytes)
 
+def makeEndPacket():
+    return struct.pack(f"!cII",b'E',0,0)
+
 def sendData(address,port, bytes, sequence_num):
     sock = socket.socket(socket.AF_INET,  socket.SOCK_DGRAM)
     sock.sendto(makeDataPacket(bytes,sequence_num), (address, port))
+
+def sendEnd(address, port):
+    sock = socket.socket(socket.AF_INET,  socket.SOCK_DGRAM)
+    sock.sendto(makeEndPacket(), (address, port))
+    
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -61,11 +58,22 @@ if __name__ == "__main__":
         for i in range(0,len(bytes),int(args.length)):
             section = bytes[i:min(i+int(args.length),len(bytes))]
             sendData(address[0],int(args.requester_port),section,sequence)
+            print("DATA Packet")
+            print("send time: ",datetime.utcnow())
+            print("requester addr: ",address)
+            print("Sequence num: ",sequence)
+            print("length: ",len(section))
+            print("payload: ",section.decode('utf-8')[0:min(len(section),4)])
+            print("")
             sequence += len(section)
-            print("Sent at: ",datetime.utcnow())
-            print("Address: ",address[0])
-            print("Port: ",int(args.requester_port))
-            print("Sequence number ",sequence)
+        sendEnd(address[0],int(args.requester_port))
+        print("END Packet")
+        print("send time: ",datetime.utcnow())
+        print("requester addr: ",address)
+        print("Sequence num: ",sequence)
+        print("length: ",0)
+        print("payload: ")
+        print("")
         
 
     serversocket.close()
