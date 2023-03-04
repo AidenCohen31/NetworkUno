@@ -35,7 +35,12 @@ def readFile(filename, b):
     return bytearr
 
 
+def makeDataPacket(bytes, sequence_num):
+    return struct.pack(f"!cII{len(bytes)}s",b'D',sequence_num,len(bytes),bytes)
 
+def sendData(address,port, bytes, sequence_num):
+    sock = socket.socket(socket.AF_INET,  socket.SOCK_DGRAM)
+    sock.sendto(makeDataPacket(bytes,sequence_num), (address, port))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -48,7 +53,19 @@ if __name__ == "__main__":
     
     serversocket = socket.socket(socket.AF_INET,  socket.SOCK_DGRAM)
     serversocket.bind((socket.gethostname(), int(args.port)))
-    while True:
-        sequence, address = receiveRequest(serversocket)
+    
+    filename, address = receiveRequest(serversocket)
+    sequence = int(args.seq_no)
+    with open(filename,"r+b") as file:
+        bytes = bytearray(file.read())
+        for i in range(0,len(bytes),int(args.length)):
+            section = bytes[i:min(i+int(args.length),len(bytes))]
+            sendData(address[0],int(args.requester_port),section,sequence)
+            sequence += len(section)
+            print("Sent at: ",datetime.utcnow())
+            print("Address: ",address[0])
+            print("Port: ",int(args.requester_port))
+            print("Sequence number ",sequence)
+        
 
-        #sendData(sequence,address,int(args.requester_port))
+    serversocket.close()

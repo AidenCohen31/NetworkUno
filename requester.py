@@ -3,23 +3,25 @@ import socket
 import struct
 import csv
 from collections import defaultdict
+
+MAX_BYTES = 6000
+
 def makeRequestPacket(filename):
     byteString =bytes(filename,'utf-8')
     return struct.pack(f"!cII{len(byteString)}s",b'R',0,len(byteString),byteString)
 
 def sendRequest(hostName,port, filename):
-    serversocket = socket.socket(socket.AF_INET,  socket.SOCK_DGRAM)
-    serversocket.sendto(makeRequestPacket(filename), (hostName, port))
+    sock = socket.socket(socket.AF_INET,  socket.SOCK_DGRAM)
+    sock.sendto(makeRequestPacket(filename), (hostName, port))
 
-def receivePacket(port):
-    serversocket = socket.socket(socket.AF_INET,  socket.SOCK_DGRAM)
-    serversocket.bind((socket.gethostname(), port))
-    while True:
-        data, addr = serversocket.recvfrom(5000)
-        print("Hello %s" %data)
+def receivePacket(sock):
+    data, addr = sock.recvfrom(MAX_BYTES)
+    header = struct.unpack_from("!cII",data)
+    length = header[2]
+    payload = struct.unpack_from(f"!{length}s",data,offset=9)[0].decode('utf-8')
+    print("Data recieved : "+payload)
+    return payload
 
-def constructString(data, file):
-    pass
 
 def parseTracker():
     with open("tracker.txt", "r") as f:
@@ -40,9 +42,13 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--fileoption")
     args = parser.parse_args()
     d = parseTracker()
+
+    sock = socket.socket(socket.AF_INET,  socket.SOCK_DGRAM)
+    sock.bind((socket.gethostname(), int(args.port)))
     for i in d[args.fileoption]:
-        print(i)
-        print(args.fileoption)
+        id = i[0]
+        #hostname, port, filename
         sendRequest(i[1],i[2],args.fileoption)
-        
+        text = receivePacket(sock)
+        print(text)
 
