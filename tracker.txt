@@ -1,3 +1,0 @@
-hello.txt 1 snares-05 7000
-split.txt 1 snares-05 5000
-split.txt 2 snares-05 5002

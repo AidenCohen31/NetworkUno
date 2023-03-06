@@ -5,7 +5,7 @@ import csv
 from datetime import datetime
 from datetime import timedelta
 from collections import defaultdict
-
+import os 
 MAX_BYTES = 6000
 
 def makeRequestPacket(filename):
@@ -21,12 +21,12 @@ def receivePackets(sock):
     text = ""
     totalPackets = 0
     totalLength = 0
+    startTime = datetime.utcnow()
     while not end:
         data, addr = sock.recvfrom(MAX_BYTES)
-        totalPackets+=1
-        startTime = datetime.utcnow()
         header = struct.unpack_from("!cII",data)
         length = header[2]
+        totalPackets+=1 if header[0] != b'E' else 0
         totalLength+=length
         if header[0]==b'E':
             end = True
@@ -81,6 +81,8 @@ if __name__ == "__main__":
 
     sock = socket.socket(socket.AF_INET,  socket.SOCK_DGRAM)
     sock.bind((socket.gethostname(), int(args.port)))
+    with open(args.fileoption, "w+") as f:
+        pass
     for i in d[args.fileoption]:
         id = i[0]
         #hostname, port, filename
@@ -88,4 +90,6 @@ if __name__ == "__main__":
         text = receivePackets(sock)
         print("<------FULL TEXT------>")
         print(text)
+        with open(args.fileoption, "a") as f:
+            f.write(text)
 

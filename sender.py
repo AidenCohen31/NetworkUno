@@ -3,6 +3,7 @@ import socket
 import struct
 from datetime import datetime
 import os
+import time
 
 MAX_BYTES = 6000
 
@@ -43,7 +44,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--port")
     parser.add_argument("-g", "--requester_port")
-    parser.add_argument("-r" "--rate")
+    parser.add_argument("-r", "--rate")
     parser.add_argument("-q", "--seq_no")
     parser.add_argument("-l", "--length")
     args = parser.parse_args()
@@ -66,6 +67,7 @@ if __name__ == "__main__":
             print("payload: ",section.decode('utf-8')[0:min(len(section),4)])
             print("")
             sequence += len(section)
+            time.sleep(1.0/int(args.rate))
         sendEnd(address[0],int(args.requester_port))
         print("END Packet")
         print("send time: ",datetime.utcnow())
